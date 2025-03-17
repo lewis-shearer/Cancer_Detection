@@ -5,4 +5,3 @@ numpy
 pandas
 tensorflow
 opencv-python
-cv2
