@@ -1,0 +1,7 @@
+streamlit
+PIL
+tempfile
+numpy
+pandas
+tensorflow
+opencv-python
