@@ -1,9 +1,16 @@
-import streamlit as st
-import random
-from PIL import Image
 import os
-import tempfile
-import time
+import subprocess
+import streamlit as st
+
+def install_dependencies():
+    requirements_file = 'requirements.txt'
+    if os.path.exists(requirements_file):
+        subprocess.run(['pip', 'install', '-r', requirements_file])
+
+# Install dependencies
+install_dependencies()
+
+# Your Streamlit app code starts here
 import os
 import numpy as np
 import pandas as pd
