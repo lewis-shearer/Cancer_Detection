@@ -4,15 +4,16 @@ from PIL import Image
 import os
 import tempfile
 import time
+import os
+import numpy as np
+import pandas as pd
+import cv2
+import random
+import tensorflow as tf
+from tensorflow.keras.optimizers import Adamax
 #from preprocess import predict
 def predict(img, type):
-    import os
-    import numpy as np
-    import pandas as pd
-    import cv2
-    import random
-    import tensorflow as tf
-    from tensorflow.keras.optimizers import Adamax  # Import Adamax
+      # Import Adamax
 
     # Set a seed for reproducibility
     random.seed(42)
