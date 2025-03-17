@@ -23,11 +23,11 @@ def predict(img, type):
 
     if type == 'Brain':
         labels = ['Glioma', 'Menin', 'Tumor']
-        model_path = 'models/brain_model_final.h5'
+        model_path = 'models/Brain_model_final.h5'
 
     elif type == 'Breast':
         labels = ['Benign', 'Malignant']
-        model_path = 'models/breast_model_final.h5'
+        model_path = 'models/Breast_model_final.h5'
 
     elif type == 'Cervical':
         labels = ['Dyskeratotic', 'Koilocytotic', 'Metaplastic', 'Parabasal', 'Superficial-Intermediate']
