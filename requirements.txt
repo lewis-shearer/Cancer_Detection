@@ -1,13 +1,7 @@
-import streamlit as st
-import random
-from Pillow import Image
-import os
-import tempfile
-import time
-import os
-import numpy as np
-import pandas as pd
-import cv2
-import random
-import tensorflow as tf
-from tensorflow.keras.optimizers import Adamax
+streamlit
+Pillow
+tempfile
+numpy
+pandas
+tensorflow
+opencv-python
