@@ -7,7 +7,7 @@ import time
 import os
 import numpy as np
 import pandas as pd
-import cv2
+
 import random
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adamax
