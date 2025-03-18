@@ -13,50 +13,58 @@ import tensorflow as tf
 from tensorflow.keras.optimizers import Adamax
 #from preprocess import predict
 def predict(img, type):
-      # Import Adamax
-      
-      # Set a seed for reproducibility
-      random.seed(42)
-      np.random.seed(42)
-      tf.random.set_seed(42)
-      model_path = 'na'
-      
-      if type == 'Brain':
+    # Import Adamax
+
+    # Set a seed for reproducibility
+    random.seed(42)
+    np.random.seed(42)
+    tf.random.set_seed(42)
+    model_path = 'na'
+
+    if type == 'Brain':
         labels = ['Glioma', 'Menin', 'Tumor']
         model_path = 'models/Brain_model_final.h5'
-      
-      elif type == 'Breast':
+
+    elif type == 'Breast':
         labels = ['Benign', 'Malignant']
         model_path = 'models/Breast_model_final.h5'
-      
-      elif type == 'Cervical':
+
+    elif type == 'Cervical':
         labels = ['Dyskeratotic', 'Koilocytotic', 'Metaplastic', 'Parabasal', 'Superficial-Intermediate']
         model_path = 'models/Cervix_model_final.h5'
-      
-      elif type == 'Kidney':
+
+    elif type == 'Kidney':
         labels = ['Normal', 'Tumor']
         model_path = 'models/Kidney_model_final.h5'
-      
-      elif type == 'Lung/Colon':
-        labels = ['Colon Adenocarcinoma', 'Colon Benign Tissue', 'Lung Adenocarcinoma', 'Lung Benign Tissue',
-                  'Lung Squamous Cell Carcinoma']
+
+    elif type == 'Lung/Colon':
+        labels = ['Colon Adenocarcinoma', 'Colon Benign Tissue', 'Lung Adenocarcinoma', 'Lung Benign Tissue', 'Lung Squamous Cell Carcinoma']
         model_path = 'models/Lung_model_final.h5'
-      
-      elif type == 'Lymphoma':
+
+    elif type == 'Lymphoma':
         labels = ['Chronic Lymphocytic Leukemia', 'Follicular Lymphoma', 'Mantle Cell Lymphoma']
         model_path = 'models/Lymphoma_model_final.h5'
-      
-      elif type == 'Oral':
+
+    elif type == 'Oral':
         labels = ['Normal', 'Oral Squamous Cell Carcinoma']
         model_path = 'models/Oral_model_final.h5'
-      
-      if model_path == 'na':
+
+    if model_path == 'na':
         print(f"Error: Unsupported cancer type: {type}")
         return None, None, None, None, None, None, None, None, None, None  # added to stop error.
-      
-      model = tf.keras.models.load_model(model_path, compile=False)
-      optimizer = Adamax(learning_rate=0.002)
-      model.compile(optimizer=optimizer, loss='BinaryCrossentropy', metrics=['accuracy'])
+
+    if not os.path.exists(model_path):
+        print(f"Error: Model file not found: {model_path}")
+        return None, None, None, None, None, None, None, None, None, None
+
+    try:
+        model = tf.keras.models.load_model(model_path, compile=False)
+        optimizer = Adamax(learning_rate=0.002)
+        model.compile(optimizer=optimizer, loss='BinaryCrossentropy', metrics=['accuracy'])
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        return None, None, None, None, None, None, None, None, None, None
+
 
     
       def preprocess(img, labels):
