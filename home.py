@@ -67,31 +67,31 @@ def predict(img, type):
 
 
     
-      def preprocess(img, labels):
-          nonlocal model
-          img = tf.io.read_file(img)
-          img = tf.image.decode_image(img, channels=3)
-          img = tf.image.convert_image_dtype(img, tf.float32)
-          if img is None:
-              print("Error: Could not read image.")
-              return None, None  # added none, none
-      
-          img_resized = tf.image.resize(img, [224, 224])
-          img_array = tf.expand_dims(img_resized, axis=0)
-      
-          prediction = model.predict(img_array)
-      
-          # Get the predicted class index
-          predicted_class_index = tf.argmax(prediction[0])
-      
-          # Get the predicted label
-          predicted_label = labels[predicted_class_index]
-      
-          # Get the probabilities
-          probabilities = prediction[0].numpy().tolist()
-          print(predicted_label, probabilities)
-      
-          return probabilities, labels  
+    def preprocess(img, labels):
+      nonlocal model
+      img = tf.io.read_file(img)
+      img = tf.image.decode_image(img, channels=3)
+      img = tf.image.convert_image_dtype(img, tf.float32)
+      if img is None:
+          print("Error: Could not read image.")
+          return None, None  # added none, none
+    
+      img_resized = tf.image.resize(img, [224, 224])
+      img_array = tf.expand_dims(img_resized, axis=0)
+    
+      prediction = model.predict(img_array)
+    
+      # Get the predicted class index
+      predicted_class_index = tf.argmax(prediction[0])
+    
+      # Get the predicted label
+      predicted_label = labels[predicted_class_index]
+    
+      # Get the probabilities
+      probabilities = prediction[0].numpy().tolist()
+      print(predicted_label, probabilities)
+    
+      return probabilities, labels  
 
       def pad_to_length_6(array):
         probs_array = np.array(array, dtype=object)
