@@ -50,11 +50,11 @@ def predict(img, type):
         model_path = 'models/Oral_model_final.h5'
     
     if model_path == 'na':
-        print(f"Error: Unsupported cancer type: {type}")
+        st.error(f"Error: Unsupported cancer type: {type}")
         return None, None, None, None, None, None, None, None, None, None  # added to stop error.
     
     if not os.path.exists(model_path):
-        print(f"Error: Model file not found: {model_path}")
+        st.error(f"Error: Model file not found: {model_path}")
         return None, None, None, None, None, None, None, None, None, None
     
     try:
@@ -62,7 +62,7 @@ def predict(img, type):
         optimizer = Adamax(learning_rate=0.002)
         model.compile(optimizer=optimizer, loss='BinaryCrossentropy', metrics=['accuracy'])
     except Exception as e:
-        print(f"Error loading model: {e}")
+        st.error(f"Error loading model: {e}")
         return None, None, None, None, None, None, None, None, None, None
 
 
@@ -73,7 +73,7 @@ def predict(img, type):
       img = tf.image.decode_image(img, channels=3)
       img = tf.image.convert_image_dtype(img, tf.float32)
       if img is None:
-          print("Error: Could not read image.")
+          st.error("Error: Could not read image.")
           return None, None  # added none, none
     
       img_resized = tf.image.resize(img, [224, 224])
