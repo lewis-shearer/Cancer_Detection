@@ -59,11 +59,11 @@ def predict(img, type):
     
     try:
         model = tf.keras.models.load_model(model_path, compile=False)
-        st.write('model loaded')
+        st.error('model loaded')
         optimizer = Adamax(learning_rate=0.002)
-        st.write('optimzer loaded')
+        st.error('optimzer loaded')
         model.compile(optimizer=optimizer, loss='BinaryCrossentropy', metrics=['accuracy'])
-        st.write('model complied')
+        st.error('model complied')
     except Exception as e:
         st.error(f"Error loading model: {e}")
         return None, None, None, None, None, None, None, None, None, None
