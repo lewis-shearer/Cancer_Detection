@@ -58,30 +58,32 @@ def predict(img, type):
     optimizer = Adamax(learning_rate=0.002)
     model.compile(optimizer=optimizer, loss='BinaryCrossentropy', metrics=['accuracy'])
 
-    def preprocess(img, labels):
-        nonlocal model
-        img = cv2.imread(img)
-        if img is None:
-            print("Error: Could not read image.")
-            return None, None  # added none, none
+    
+def preprocess(img, labels):
+    nonlocal model
+    img = tf.io.read_file(img)
+    img = tf.image.decode_image(img, channels=3)
+    img = tf.image.convert_image_dtype(img, tf.float32)
+    if img is None:
+        print("Error: Could not read image.")
+        return None, None  # added none, none
 
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img_resized = cv2.resize(img_rgb, (224, 224))
-        img_array = np.expand_dims(img_resized, axis=0)
+    img_resized = tf.image.resize(img, [224, 224])
+    img_array = tf.expand_dims(img_resized, axis=0)
 
-        prediction = model.predict(img_array)
+    prediction = model.predict(img_array)
 
-        # Get the predicted class index
-        predicted_class_index = np.argmax(prediction[0])
+    # Get the predicted class index
+    predicted_class_index = tf.argmax(prediction[0])
 
-        # Get the predicted label
-        predicted_label = labels[predicted_class_index]
+    # Get the predicted label
+    predicted_label = labels[predicted_class_index]
 
-        # Get the probabilities
-        probabilities = prediction[0].tolist()
-        print(predicted_label, probabilities)
+    # Get the probabilities
+    probabilities = prediction[0].numpy().tolist()
+    print(predicted_label, probabilities)
 
-        return probabilities, labels  # corrected return statement.
+    return probabilities, labels  
 
     def pad_to_length_6(array):
         probs_array = np.array(array, dtype=object)
