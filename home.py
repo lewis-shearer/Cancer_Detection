@@ -358,7 +358,24 @@ def demo_page():
 
 
                                 """, unsafe_allow_html=True)
+                
+            def patient_details_form():
+                with st.form(key='patient_form'):
+                st.text_input("Name")
+                st.text_input("Age")
+                st.text_input("Gender")
+                st.text_input("Patient ID")
+                st.text_input("Scan type")
+                submit_button = st.form_submit_button(label='Submit')
 
+                # add al feild lus locked ones for probs etc
+
+                if submit_button:
+                    st.success("Patient details submitted successfully!")
+                    # link to pdf gen
+
+            if st.button("Enter Patient Details"):
+                patient_details_form()
 
 def main():
     st.sidebar.title("🧭 Navigation")
