@@ -11,6 +11,75 @@ import random
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adamax
 #from preprocess import predict
+
+import numpy as np
+import cv2
+import tensorflow as tf
+
+def generate_gradcam_heatmap(model, image, class_index, last_conv_layer_name="conv_1_bn"):
+
+    # Create a model that outputs the last conv layer and predictions
+    grad_model = tf.keras.models.Model(
+        [model.inputs],
+        [model.get_layer(last_conv_layer_name).output, model.output]
+    )
+
+    with tf.GradientTape() as tape:
+        conv_outputs, predictions = grad_model(image)
+        loss = predictions[:, class_index]
+
+    # Gradient of loss w.r.t. conv layer output
+    grads = tape.gradient(loss, conv_outputs)
+    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+
+    conv_outputs = conv_outputs[0]
+    heatmap = conv_outputs @ pooled_grads[..., tf.newaxis]
+    heatmap = tf.squeeze(heatmap)
+    heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap + 1e-10)  # avoid div by zero
+    heatmap = heatmap.numpy()
+
+    # Resize heatmap to match input image size
+    heatmap_resized = cv2.resize(heatmap, (image.shape[2], image.shape[1]))
+    heatmap_colored = cv2.applyColorMap(np.uint8(255 * heatmap_resized), cv2.COLORMAP_JET)
+
+    # Prepare original image for overlay
+    img_display = image[0].numpy()
+    if np.max(img_display) <= 1.0:
+        img_display = np.uint8(255 * img_display)
+    else:
+        img_display = np.uint8(img_display)
+
+    # If grayscale, convert to 3 channels
+    if img_display.shape[-1] == 1:
+        img_display = np.repeat(img_display, 3, axis=-1)
+
+    # Convert to BGR for OpenCV overlay
+    img_display_bgr = cv2.cvtColor(img_display, cv2.COLOR_RGB2BGR)
+
+    # Overlay heatmap on image
+    superimposed_img = cv2.addWeighted(img_display_bgr, 0.6, heatmap_colored, 0.4, 0)
+
+    # Display
+    plt.figure(figsize=(10, 4))
+
+    plt.subplot(1, 3, 1)
+    plt.title("Original Image")
+    plt.imshow(cv2.cvtColor(img_display_bgr, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
+
+    plt.subplot(1, 3, 2)
+    plt.title("Grad-CAM Heatmap")
+    plt.imshow(heatmap_resized, cmap='jet')
+    plt.axis("off")
+
+    plt.subplot(1, 3, 3)
+    plt.title("Superimposed")
+    plt.imshow(cv2.cvtColor(superimposed_img, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
+
+    plt.tight_layout()
+    plt.show()
+
 def predict(img, type):
     import os
     import numpy as np
@@ -147,7 +216,7 @@ def predict(img, type):
 
     label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5 = pred_with_lables(img, labels)
 
-    return label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5
+    return label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5, model_path
 
 def welcome_page():
     # ... (welcome page code remains the same) ...
@@ -193,7 +262,7 @@ def detection_page():
 
             selected_image_path = temp_file_path
             st.session_state.demo_image_selected = temp_file_path
-            label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5 = predict(
+            label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5, model_path = predict(
                 img=selected_image_path, type=cancer_type)
 
             if cancer_type == 'Brain':
@@ -275,6 +344,16 @@ def detection_page():
 
 
                                     """, unsafe_allow_html=True)
+                
+            model = tf.keras.models.load_model(model_path)
+            preds = model.predict(tf.expand_dims(cv2.resize(cv2.imread(temp_file_path), (224, 224)), axis=0))
+            predicted_class = tf.argmax(preds[0])
+            generate_gradcam_heatmap(model = model, 
+                                     image = tf.expand_dims(cv2.resize(cv2.imread(temp_file_path), (224, 224)), axis=0), 
+                                     class_index=predicted_class, 
+                                     last_conv_layer_name="conv_1_bn")
+            
+            
 
 def backend_info_page():
     # ... (backend info page code remains the same) ...
