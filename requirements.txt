@@ -4,6 +4,5 @@ temp
 numpy
 pandas
 tensorflow
-opencv-python
 scikit-learn
-
+opencv-python
