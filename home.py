@@ -58,27 +58,28 @@ def generate_gradcam_heatmap(model, image, class_index, last_conv_layer_name="co
 
     # Overlay heatmap on image
     superimposed_img = cv2.addWeighted(img_display_bgr, 0.6, heatmap_colored, 0.4, 0)
+    import matplotlib.pyplot as plt
+    # Display using Streamlit and Matplotlib
+    st.subheader("Image Analysis Results")
 
-    # Display
-    plt.figure(figsize=(10, 4))
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5)) # Create a figure and a set of subplots
 
-    plt.subplot(1, 3, 1)
-    plt.title("Original Image")
-    plt.imshow(cv2.cvtColor(img_display_bgr, cv2.COLOR_BGR2RGB))
-    plt.axis("off")
+    axes[0].set_title("Original Image")
+    axes[0].imshow(cv2.cvtColor(img_display_bgr, cv2.COLOR_BGR2RGB))
+    axes[0].axis("off")
 
-    plt.subplot(1, 3, 2)
-    plt.title("Grad-CAM Heatmap")
-    plt.imshow(heatmap_resized, cmap='jet')
-    plt.axis("off")
+    axes[1].set_title("Grad-CAM Heatmap")
+    axes[1].imshow(heatmap_resized, cmap='jet')
+    axes[1].axis("off")
 
-    plt.subplot(1, 3, 3)
-    plt.title("Superimposed")
-    plt.imshow(cv2.cvtColor(superimposed_img, cv2.COLOR_BGR2RGB))
-    plt.axis("off")
+    axes[2].set_title("Superimposed")
+    axes[2].imshow(cv2.cvtColor(superimposed_img, cv2.COLOR_BGR2RGB))
+    axes[2].axis("off")
 
     plt.tight_layout()
-    plt.show()
+
+    # Display the Matplotlib figure in Streamlit
+    st.pyplot(fig)
 
 def predict(img, type):
     import os
@@ -394,7 +395,7 @@ def demo_page():
             try:
                 img = Image.open(path)
                 img.thumbnail((100, 100))
-                st.image(img, caption=key, use_column_width=False, output_format="PNG")
+                st.image(img, caption=key, use_container_width=False, output_format="PNG")
                 if st.button("Select", key=f"btn_{key}"):
                     selected_image_key = key
                     st.session_state.selected_image_key = selected_image_key
@@ -409,7 +410,7 @@ def demo_page():
 
             selected_image_path = demo_images[selected_image_key]
             st.session_state.demo_image_selected = selected_image_path
-            label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5 = predict(img=demo_images[selected_image_key],  type=cancer_type)
+            label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5, model_path = predict(img=demo_images[selected_image_key],  type=cancer_type)
 
             if cancer_type == 'Brain':
                 st.markdown(f"""
@@ -490,24 +491,16 @@ def demo_page():
 
 
                                 """, unsafe_allow_html=True)
+            
+            model = tf.keras.models.load_model(model_path)
+            preds = model.predict(tf.expand_dims(cv2.resize(cv2.imread(demo_images[selected_image_key]), (224, 224)), axis=0))
+            predicted_class = tf.argmax(preds[0])
+            generate_gradcam_heatmap(model = model, 
+                                     image = tf.expand_dims(cv2.resize(cv2.imread(demo_images[selected_image_key]), (224, 224)), axis=0), 
+                                     class_index=predicted_class, 
+                                     last_conv_layer_name="conv_1_bn")
                 
-            def patient_details_form():
-                with st.form(key='patient_form'):
-                    st.text_input("Name")
-                    st.text_input("Age")
-                    st.text_input("Gender")
-                    st.text_input("Patient ID")
-                    st.text_input("Scan type")
-                    submit_button = st.form_submit_button(label='Submit')
-
-                    # add al feild lus locked ones for probs etc
-
-            if submit_button:
-                st.success("Patient details submitted successfully!")
-                # link to pdf gen
-
-            if st.button("Enter Patient Details"):
-                patient_details_form()
+            
 
 def main():
     st.sidebar.title("🧭 Navigation")
