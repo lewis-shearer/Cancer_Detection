@@ -5,4 +5,4 @@ numpy
 pandas
 tensorflow
 scikit-learn
-opencv-python
+opencv-python-headless
