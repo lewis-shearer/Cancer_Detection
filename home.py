@@ -11,89 +11,143 @@ import random
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adamax
 #from preprocess import predict
-def predict(img_path, cancer_type):
-    """
-    Predicts the type of cancer in an image.
+def predict(img, type):
+    import os
+    import numpy as np
+    import pandas as pd
+    import cv2
+    import random
+    import tensorflow as tf
+    from tensorflow.keras.optimizers import Adamax  # Import Adamax
 
-    Args:
-        img_path (str): The path to the image file.
-        cancer_type (str): The type of cancer to predict (e.g., 'Brain', 'Breast').
-
-    Returns:
-        tuple: A tuple containing the top 5 predicted labels and probabilities.
-               Returns ('NA', 'NA', ...) if an error occurs.
-    """
-
-    # Set random seeds for consistent results
+    # Set a seed for reproducibility
     random.seed(42)
     np.random.seed(42)
     tf.random.set_seed(42)
+    model_path = 'na'
 
-    # Define cancer types and their corresponding models and labels
-    cancer_info = {
-        'Brain': {'labels': ['Glioma', 'Menin', 'Tumor'], 'model_path': 'models/Brain_model_final_saved_model'},
-        'Breast': {'labels': ['Benign', 'Malignant'], 'model_path': 'models/Breast_model_final_saved_model'},
-        'Cervical': {'labels': ['Dyskeratotic', 'Koilocytotic', 'Metaplastic', 'Parabasal', 'Superficial-Intermediate'], 'model_path': 'models/Cervix_model_final_saved_model'},
-        'Kidney': {'labels': ['Normal', 'Tumor'], 'model_path': 'models/Kidney_model_final_saved_model'},
-        'Lung/Colon': {'labels': ['Colon Adenocarcinoma', 'Colon Benign Tissue', 'Lung Adenocarcinoma', 'Lung Benign Tissue', 'Lung Squamous Cell Carcinoma'], 'model_path': 'models/Lung_model_final_saved_model'},
-        'Lymphoma': {'labels': ['Chronic Lymphocytic Leukemia', 'Follicular Lymphoma', 'Mantle Cell Lymphoma'], 'model_path': 'models/Lymphoma_model_final_saved_model'},
-        'Oral': {'labels': ['Normal', 'Oral Squamous Cell Carcinoma'], 'model_path': 'models/Oral_model_final_saved_model'}
-    }
+    if type == 'Brain':
+        labels = ['Glioma', 'Menin', 'Tumor']
+        model_path = 'models/brain_cancer_model.keras'
 
-    # Check if the cancer type is supported
-    if cancer_type not in cancer_info:
-        print(f"Error: Unsupported cancer type: {cancer_type}")
-        return 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA'
+    elif type == 'Breast':
+        labels = ['Benign', 'Malignant']
+        model_path = 'models/breast_cancer_model.keras'
 
-    # Load the model and labels
-    labels = cancer_info[cancer_type]['labels']
-    model_path = cancer_info[cancer_type]['model_path']
-    model = tf.keras.models.load_model(model_path, compile=False)
-    optimizer = Adamax(learning_rate=0.002)
-    model.compile(optimizer=optimizer, loss='BinaryCrossentropy', metrics=['accuracy'])
+    elif type == 'Cervical':
+        labels = ['Dyskeratotic', 'Koilocytotic', 'Metaplastic', 'Parabasal', 'Superficial-Intermediate']
+        model_path = 'models/cervix_cancer_model.keras'
 
-    def preprocess_image(image_path):
-        """Preprocesses the image for prediction."""
-        try:
-            img_string = tf.io.read_file(image_path)
-            img = tf.image.decode_image(img_string, channels=3)
-            img_resized = tf.image.resize(img, (224, 224))
-            img_array = tf.expand_dims(img_resized, axis=0)
-            img_array = tf.cast(img_array, dtype=tf.float32)
-            return img_array
-        except tf.errors.NotFoundError:
-            print(f"Error: Could not read image at {image_path}")
-            return None
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            return None
+    elif type == 'Kidney':
+        labels = ['Normal', 'Tumor']
+        model_path = 'models/kidney_cancer_model.keras'
 
-    # Preprocess the image
-    img_array = preprocess_image(img_path)
-    if img_array is None:
-        return 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA'
+    elif type == 'Lung/Colon':
+        labels = ['Colon Adenocarcinoma', 'Colon Benign Tissue', 'Lung Adenocarcinoma', 'Lung Benign Tissue',
+                  'Lung Squamous Cell Carcinoma']
+        model_path = 'models/lung_colon_cancer_model.keras'
 
-    # Make the prediction
-    prediction = model.predict(img_array)[0] #Get the prediction for the first image in the batch.
-    probabilities = prediction.tolist()
+    elif type == 'Lymphoma':
+        labels = ['Chronic Lymphocytic Leukemia', 'Follicular Lymphoma', 'Mantle Cell Lymphoma']
+        model_path = 'models/lymphoma_cancer_model.keras'
 
-    # Create a list of (probability, label) pairs and sort them
-    label_probs = list(zip(probabilities, labels))
-    label_probs.sort(key=lambda x: x[0], reverse=True)
+    elif type == 'Oral':
+        labels = ['Normal', 'Oral Squamous Cell Carcinoma']
+        model_path = 'models/oral_cancer_model.keras'
 
-    # Extract sorted probabilities and labels
-    sorted_probs, sorted_labels = zip(*label_probs)
-    sorted_probs = [round(prob * 100, 2) for prob in sorted_probs]
+    if model_path == 'na':
+        print(f"Error: Unsupported cancer type: {type}")
+        return None, None, None, None, None, None, None, None, None, None  # added to stop error.
 
-    # Pad the lists with 'NA' if they're shorter than 6
-    padded_labels = list(sorted_labels[:6]) + ['NA'] * (6 - len(sorted_labels))
-    padded_probs = list(sorted_probs[:6]) + ['NA'] * (6 - len(sorted_probs))
+    model = tf.keras.models.load_model(model_path)
 
-    # Return the top 5 labels and probabilities
-    return padded_labels[0], padded_probs[0], padded_labels[1], padded_probs[1], padded_labels[2], padded_probs[2], padded_labels[3], padded_probs[3], padded_labels[4], padded_probs[4]
+    def preprocess(img, labels):
+        nonlocal model
+        img = cv2.imread(img)
+        if img is None:
+            print("Error: Could not read image.")
+            return None, None  # added none, none
 
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img_resized = cv2.resize(img_rgb, (224, 224))
+        img_array = np.expand_dims(img_resized, axis=0)
 
+        prediction = model.predict(img_array)
 
+        # Get the predicted class index
+        predicted_class_index = np.argmax(prediction[0])
+
+        # Get the predicted label
+        predicted_label = labels[predicted_class_index]
+
+        # Get the probabilities
+        probabilities = prediction[0].tolist()
+        
+
+        return probabilities, labels  # corrected return statement.
+
+    def pad_to_length_6(array):
+        probs_array = np.array(array, dtype=object)
+        current_length = len(probs_array)
+        
+
+        if current_length >= 6:
+            
+            return probs_array[:6]
+        else:
+            padding_length = 6 - current_length
+            padding = np.full(padding_length, 'NA', dtype=object)
+            
+            return np.concatenate((probs_array, padding))
+
+    def pred_with_lables(img_path, labels):
+        
+        probs, labels = preprocess(img_path, labels)
+
+        if probs is None:
+            return 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA'
+
+        
+
+        label_probs = list(zip(probs, labels))
+        
+
+        label_probs.sort(key=lambda x: x[0], reverse=True)
+        
+        sorted_probs, sorted_labels = zip(*label_probs)
+        
+
+        sorted_probs = list(sorted_probs)
+        sorted_labels = list(sorted_labels)
+
+        if not sorted_probs:
+            print("Warning: No probabilities to process.")
+            return 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA'
+
+        sorted_probs = [prob * 100 for prob in sorted_probs]
+        sorted_probs = [round(prob, 2) if isinstance(prob, (int, float)) else prob for prob in sorted_probs]
+
+        padded_labels = pad_to_length_6(sorted_labels)
+        padded_probs = pad_to_length_6(sorted_probs)
+
+       
+
+        label_1 = padded_labels[0]
+        prob_1 = padded_probs[0]
+        label_2 = padded_labels[1]
+        prob_2 = padded_probs[1]
+        label_3 = padded_labels[2]
+        prob_3 = padded_probs[2]
+        label_4 = padded_labels[3]
+        prob_4 = padded_probs[3]
+        label_5 = padded_labels[4]
+        prob_5 = padded_probs[4]
+
+        return label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5
+
+    label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5 = pred_with_lables(img, labels)
+
+    return label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5
 
 def welcome_page():
     # ... (welcome page code remains the same) ...
@@ -126,7 +180,7 @@ def detection_page():
             temp_file.write(uploaded_file.getvalue())
             temp_file_path = temp_file.name
 
-        st.write(f"Temporary file path: {temp_file_path}")
+      
 
 
     cancer_type = st.selectbox("Select Cancer Area",
@@ -140,7 +194,7 @@ def detection_page():
             selected_image_path = temp_file_path
             st.session_state.demo_image_selected = temp_file_path
             label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5 = predict(
-                img_path=selected_image_path, cancer_type=cancer_type)
+                img=selected_image_path, type=cancer_type)
 
             if cancer_type == 'Brain':
                 st.markdown(f"""
@@ -239,7 +293,6 @@ def backend_info_page():
     st.subheader("💾 Datasets")
     st.write("Details about the datasets used for training and testing. 📊")
 
-
 def demo_page():
     st.title("🖼️ Image Preview Demo")
     st.write("Click on an image preview, then press 'Run Detection'.")
@@ -277,7 +330,7 @@ def demo_page():
 
             selected_image_path = demo_images[selected_image_key]
             st.session_state.demo_image_selected = selected_image_path
-            label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5 = predict(img_path=demo_images[selected_image_key],  cancer_type=cancer_type)
+            label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5 = predict(img=demo_images[selected_image_key],  type=cancer_type)
 
             if cancer_type == 'Brain':
                 st.markdown(f"""
@@ -361,18 +414,18 @@ def demo_page():
                 
             def patient_details_form():
                 with st.form(key='patient_form'):
-                st.text_input("Name")
-                st.text_input("Age")
-                st.text_input("Gender")
-                st.text_input("Patient ID")
-                st.text_input("Scan type")
-                submit_button = st.form_submit_button(label='Submit')
+                    st.text_input("Name")
+                    st.text_input("Age")
+                    st.text_input("Gender")
+                    st.text_input("Patient ID")
+                    st.text_input("Scan type")
+                    submit_button = st.form_submit_button(label='Submit')
 
-                # add al feild lus locked ones for probs etc
+                    # add al feild lus locked ones for probs etc
 
-                if submit_button:
-                    st.success("Patient details submitted successfully!")
-                    # link to pdf gen
+            if submit_button:
+                st.success("Patient details submitted successfully!")
+                # link to pdf gen
 
             if st.button("Enter Patient Details"):
                 patient_details_form()

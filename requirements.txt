@@ -5,4 +5,5 @@ numpy
 pandas
 tensorflow
 opencv-python
+scikit-learn
 
