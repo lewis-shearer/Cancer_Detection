@@ -494,10 +494,11 @@ def demo_page():
                                 """, unsafe_allow_html=True)
             
             model = tf.keras.models.load_model(model_path)
-            preds = model.predict(tf.expand_dims(cv2.resize(cv2.imread(demo_images[selected_image_key]), (224, 224)), axis=0))
+            image_array = tf.expand_dims(cv2.resize(cv2.imread(demo_images[selected_image_key]), (224, 224)), axis=0)
+            preds = model.predict(image_array)
             predicted_class = tf.argmax(preds[0])
             generate_gradcam_heatmap(model = model, 
-                                     image = tf.expand_dims(cv2.resize(cv2.imread(demo_images[selected_image_key]), (224, 224)), axis=0), 
+                                     image = image_array, 
                                      class_index=predicted_class, 
                                      last_conv_layer_name="conv_1_bn")
                 
