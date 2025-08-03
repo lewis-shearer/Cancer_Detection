@@ -12,8 +12,9 @@ import matplotlib.pyplot as plt
 def generate_gradcam_heatmap(model, image_array, last_conv_layer_name, pred_index=None):
 
     # Create a model that outputs the last conv layer and predictions
+    # Using model.inputs instead of [model.inputs] to avoid nested lists
     grad_model = tf.keras.models.Model(
-        [model.inputs],
+        model.inputs,
         [model.get_layer(last_conv_layer_name).output, model.output]
     )
 
@@ -22,6 +23,11 @@ def generate_gradcam_heatmap(model, image_array, last_conv_layer_name, pred_inde
     # with respect to the activations of the last conv layer
     with tf.GradientTape() as tape:
         last_conv_layer_output, preds = grad_model(image_array)
+        # If the model has multiple outputs, preds will be a list.
+        # We are interested in the first prediction output.
+        if isinstance(preds, list):
+            preds = preds[0]
+
         if pred_index is None:
             pred_index = tf.argmax(preds[0])
         
