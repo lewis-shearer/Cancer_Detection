@@ -363,7 +363,7 @@ def detection_page():
 
             # Display Grad-CAM
             st.subheader("Grad-CAM Heatmap")
-            st.image(superimposed_img, caption="Model Activation Heatmap", use_column_width=True)
+            st.image(superimposed_img, caption="Model Activation Heatmap", use_container_width=True)
 
 
 def backend_info_page():
