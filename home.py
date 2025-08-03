@@ -1,22 +1,15 @@
-import streamlit as st
-import random
-from PIL import Image
-import os
 import tempfile
-import time
 import os
-import numpy as np
-import pandas as pd
-import random
-import tensorflow as tf
-from tensorflow.keras.optimizers import Adamax
-#from preprocess import predict
-
-import numpy as np
 import cv2
+import numpy as np
 import tensorflow as tf
+import streamlit as st
+from PIL import Image
+import matplotlib.pyplot as plt
 
-def generate_gradcam_heatmap(model, image, class_index, last_conv_layer_name="conv_1_bn"):
+
+# Function to generate Grad-CAM heatmap
+def generate_gradcam_heatmap(model, image_array, last_conv_layer_name, pred_index=None):
 
     # Create a model that outputs the last conv layer and predictions
     grad_model = tf.keras.models.Model(
@@ -24,63 +17,60 @@ def generate_gradcam_heatmap(model, image, class_index, last_conv_layer_name="co
         [model.get_layer(last_conv_layer_name).output, model.output]
     )
 
+    # Record the operations for automatic differentiation.
+    # The gradient tape will watch the operations on the inputs
+    # with respect to the activations of the last conv layer
     with tf.GradientTape() as tape:
-        conv_outputs, predictions = grad_model(image)
-        predictions = tf.convert_to_tensor(predictions) 
-        loss = predictions[:, class_index]
+        last_conv_layer_output, preds = grad_model(image_array)
+        if pred_index is None:
+            pred_index = tf.argmax(preds[0])
+        
+        # Handle binary vs. categorical models
+        if preds.shape[1] == 1: # Binary classification
+             class_channel = preds[0]
+        else: # Categorical classification
+             class_channel = preds[:, pred_index]
 
-    # Gradient of loss w.r.t. conv layer output
-    grads = tape.gradient(loss, conv_outputs)
+
+    # This is the gradient of the output neuron (top predicted or chosen)
+    # with respect to the output of the last conv layer
+    grads = tape.gradient(class_channel, last_conv_layer_output)
+
+    # Pool the gradients over the feature map dimensions
     pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
 
-    conv_outputs = conv_outputs[0]
+    # Get the output of the last conv layer
+    conv_outputs = last_conv_layer_output[0]
+
+    # Compute the heatmap by multiplying the pooled gradients with the conv outputs
     heatmap = conv_outputs @ pooled_grads[..., tf.newaxis]
     heatmap = tf.squeeze(heatmap)
-    heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap + 1e-10)  # avoid div by zero
-    heatmap = heatmap.numpy()
 
-    # Resize heatmap to match input image size
-    heatmap_resized = cv2.resize(heatmap, (image.shape[2], image.shape[1]))
-    heatmap_colored = cv2.applyColorMap(np.uint8(255 * heatmap_resized), cv2.COLORMAP_JET)
+    # For visualization purpose, we will also normalize the heatmap between 0 & 1
+    heatmap = tf.maximum(heatmap, 0) / (tf.math.reduce_max(heatmap) + 1e-8)
+    return heatmap.numpy()
 
-    # Prepare original image for overlay
-    img_display = image[0].numpy()
-    if np.max(img_display) <= 1.0:
-        img_display = np.uint8(255 * img_display)
-    else:
-        img_display = np.uint8(img_display)
+def overlay_gradcam_on_image(img, heatmap, alpha=0.4):
+    """Overlays the heatmap on the original image."""
+    # Resize heatmap to match image dimensions
+    heatmap = cv2.resize(heatmap, (img.shape[1], img.shape[0]))
+    heatmap = np.uint8(255 * heatmap)
 
-    # If grayscale, convert to 3 channels
-    if img_display.shape[-1] == 1:
-        img_display = np.repeat(img_display, 3, axis=-1)
+    # Apply colormap
+    jet = plt.colormaps.get_cmap("jet")
+    jet_colors = jet(np.arange(256))[:, :3]
+    jet_heatmap = jet_colors[heatmap]
 
-    # Convert to BGR for OpenCV overlay
-    img_display_bgr = cv2.cvtColor(img_display, cv2.COLOR_RGB2BGR)
+    # Create an image with RGB colorized heatmap
+    jet_heatmap = tf.keras.utils.array_to_img(jet_heatmap)
+    jet_heatmap = np.array(jet_heatmap)
 
-    # Overlay heatmap on image
-    superimposed_img = cv2.addWeighted(img_display_bgr, 0.6, heatmap_colored, 0.4, 0)
-    import matplotlib.pyplot as plt
-    # Display using Streamlit and Matplotlib
-    st.subheader("Image Analysis Results")
+    # Superimpose the heatmap on original image
+    superimposed_img = jet_heatmap * alpha + img
+    superimposed_img = tf.keras.utils.array_to_img(superimposed_img)
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5)) # Create a figure and a set of subplots
+    return superimposed_img
 
-    axes[0].set_title("Original Image")
-    axes[0].imshow(cv2.cvtColor(img_display_bgr, cv2.COLOR_BGR2RGB))
-    axes[0].axis("off")
-
-    axes[1].set_title("Grad-CAM Heatmap")
-    axes[1].imshow(heatmap_resized, cmap='jet')
-    axes[1].axis("off")
-
-    axes[2].set_title("Superimposed")
-    axes[2].imshow(cv2.cvtColor(superimposed_img, cv2.COLOR_BGR2RGB))
-    axes[2].axis("off")
-
-    plt.tight_layout()
-
-    # Display the Matplotlib figure in Streamlit
-    st.pyplot(fig)
 
 def predict(img, type):
     import os
@@ -357,12 +347,18 @@ def detection_page():
             else:
                 predicted_class = tf.argmax(preds[0])
 
-            generate_gradcam_heatmap(model = model, 
-                                     image = image_array, 
-                                     class_index=predicted_class, 
-                                     last_conv_layer_name="conv_1_bn")
+            # --- Grad-CAM Generation ---
+            last_conv_layer_name = "conv_1_bn" 
+            heatmap = generate_gradcam_heatmap(model, image_array, last_conv_layer_name, pred_index=predicted_class)
             
-            
+            # Overlay heatmap on original image
+            original_img = cv2.cvtColor(cv2.imread(temp_file_path), cv2.COLOR_BGR2RGB)
+            superimposed_img = overlay_gradcam_on_image(original_img, heatmap)
+
+            # Display Grad-CAM
+            st.subheader("Grad-CAM Heatmap")
+            st.image(superimposed_img, caption="Model Activation Heatmap", use_column_width=True)
+
 
 def backend_info_page():
     # ... (backend info page code remains the same) ...
@@ -382,7 +378,7 @@ def backend_info_page():
     st.write("Details about the datasets used for training and testing. 📊")
 
 def demo_page():
-    st.title("🖼️ Image Preview Demo")
+    st.title("📋 Demo 🖼️")
     st.write("Click on an image preview, then press 'Run Detection'.")
 
     demo_images = {
@@ -510,32 +506,21 @@ def demo_page():
             else:
                 predicted_class = tf.argmax(preds[0])
 
-            generate_gradcam_heatmap(model = model, 
-                                     image = image_array, 
-                                     class_index=predicted_class, 
-                                     last_conv_layer_name="conv_1_bn")
+            # --- Grad-CAM Generation ---
+            last_conv_layer_name = "conv_1_bn" 
+            heatmap = generate_gradcam_heatmap(model, image_array, last_conv_layer_name, pred_index=predicted_class)
             
-            
+            # Overlay heatmap on original image
+            original_img = cv2.cvtColor(cv2.imread(temp_file_path), cv2.COLOR_BGR2RGB)
+            superimposed_img = overlay_gradcam_on_image(original_img, heatmap)
 
-def backend_info_page():
-    # ... (backend info page code remains the same) ...
-    st.title("🧠 Backend Information 📚")
-    st.write("Details about the CNN model and its implementation. ⚙️")
-    st.write("""
-    Here you can find information about the model architecture, training process, and datasets used. 📝
-    """)
-    st.write("---")
-    st.subheader("🏗️ Model Architecture")
-    st.write("Details about the CNN layers and parameters. 🧱")
-    st.write("---")
-    st.subheader("🚂 Training Process")
-    st.write("Information about the training data, epochs, and optimization. 📈")
-    st.write("---")
-    st.subheader("💾 Datasets")
-    st.write("Details about the datasets used for training and testing. 📊")
+            # Display Grad-CAM
+            st.subheader("Grad-CAM Heatmap")
+            st.image(superimposed_img, caption="Model Activation Heatmap", use_column_width=True)
+
 
 def demo_page():
-    st.title("🖼️ Image Preview Demo")
+    st.title("📋 Demo 🖼️")
     st.write("Click on an image preview, then press 'Run Detection'.")
 
     demo_images = {
@@ -663,10 +648,17 @@ def demo_page():
             else:
                 predicted_class = tf.argmax(preds[0])
                 
-            generate_gradcam_heatmap(model = model, 
-                                     image = image_array, 
-                                     class_index=predicted_class, 
-                                     last_conv_layer_name="conv_1_bn")
+            # --- Grad-CAM Generation ---
+            last_conv_layer_name = "conv_1_bn"
+            heatmap = generate_gradcam_heatmap(model, image_array, last_conv_layer_name, pred_index=predicted_class)
+
+            # Overlay heatmap on original image
+            original_img = cv2.cvtColor(cv2.imread(demo_images[selected_image_key]), cv2.COLOR_BGR2RGB)
+            superimposed_img = overlay_gradcam_on_image(original_img, heatmap)
+
+            # Display Grad-CAM
+            st.subheader("Grad-CAM Heatmap")
+            st.image(superimposed_img, caption="Model Activation Heatmap", use_column_width=True)
                 
             
 
