@@ -26,6 +26,7 @@ def generate_gradcam_heatmap(model, image, class_index, last_conv_layer_name="co
 
     with tf.GradientTape() as tape:
         conv_outputs, predictions = grad_model(image)
+        predictions = tf.convert_to_tensor(predictions) 
         loss = predictions[:, class_index]
 
     # Gradient of loss w.r.t. conv layer output
