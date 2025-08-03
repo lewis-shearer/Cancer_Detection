@@ -348,10 +348,170 @@ def detection_page():
                                     """, unsafe_allow_html=True)
                 
             model = tf.keras.models.load_model(model_path)
-            preds = model.predict(tf.expand_dims(cv2.resize(cv2.imread(temp_file_path), (224, 224)), axis=0))
-            predicted_class = tf.argmax(preds[0])
+            image_array = tf.expand_dims(cv2.resize(cv2.imread(temp_file_path), (224, 224)), axis=0)
+            preds = model.predict(image_array)
+            
+            # For binary classification with single output, argmax is always 0
+            if preds.shape[1] == 1:
+                predicted_class = 0
+            else:
+                predicted_class = tf.argmax(preds[0])
+
             generate_gradcam_heatmap(model = model, 
-                                     image = tf.expand_dims(cv2.resize(cv2.imread(temp_file_path), (224, 224)), axis=0), 
+                                     image = image_array, 
+                                     class_index=predicted_class, 
+                                     last_conv_layer_name="conv_1_bn")
+            
+            
+
+def backend_info_page():
+    # ... (backend info page code remains the same) ...
+    st.title("🧠 Backend Information 📚")
+    st.write("Details about the CNN model and its implementation. ⚙️")
+    st.write("""
+    Here you can find information about the model architecture, training process, and datasets used. 📝
+    """)
+    st.write("---")
+    st.subheader("🏗️ Model Architecture")
+    st.write("Details about the CNN layers and parameters. 🧱")
+    st.write("---")
+    st.subheader("🚂 Training Process")
+    st.write("Information about the training data, epochs, and optimization. 📈")
+    st.write("---")
+    st.subheader("💾 Datasets")
+    st.write("Details about the datasets used for training and testing. 📊")
+
+def demo_page():
+    st.title("🖼️ Image Preview Demo")
+    st.write("Click on an image preview, then press 'Run Detection'.")
+
+    demo_images = {
+        "Brain Glioma": "images/brain_glioma_0038.jpg",
+        "Brain Menin": "images/brain_menin_0039.jpg",
+        "Brain Tumor": "images/brain_tumor_0021.jpg",
+        "Breast Benign": "images/breast_benign_0003.jpg",
+        "Breast Malignant": "images/breast_malignant_0002.jpg",
+    }
+
+    selected_image_key = st.session_state.get("selected_image_key", list(demo_images.keys())[0])
+
+    cols = st.columns(len(demo_images))
+    image_keys = list(demo_images.keys())
+
+    for i, (key, path) in enumerate(demo_images.items()):
+        with cols[i]:
+            try:
+                img = Image.open(path)
+                img.thumbnail((100, 100))
+                st.image(img, caption=key, use_container_width=False, output_format="PNG")
+                if st.button("Select", key=f"btn_{key}"):
+                    selected_image_key = key
+                    st.session_state.selected_image_key = selected_image_key
+            except FileNotFoundError:
+                st.error(f"Image not found: {path}.")
+    cancer_type = st.selectbox("Select Cancer Area", ["Brain", "Breast", "Cervical", "Kidney", "Lung/Colon", "Lymphoma", "Oral"])
+    if "selected_image_key" in st.session_state:
+        st.write(f"Currently Selected Image: {st.session_state.selected_image_key}")
+    st.write(f"Currently Selected Area: {cancer_type}")
+    if st.button("Run Detection"):
+        with st.spinner("Running Detection..."): #Loading box
+
+            selected_image_path = demo_images[selected_image_key]
+            st.session_state.demo_image_selected = selected_image_path
+            label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5, model_path = predict(img=demo_images[selected_image_key],  type=cancer_type)
+
+            if cancer_type == 'Brain':
+                st.markdown(f"""
+                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
+                    <strong>Prediction:</strong> {label_1}<br>
+                    <strong>Confidence:</strong> {prob_1}%<br><br>
+                    <strong>Other Classes</strong>
+                    <p>Confidence of {label_2}:  {prob_2}%<br>
+                    <p>Confidence of {label_3}:  {prob_3}%<br>
+                    
+                """, unsafe_allow_html=True)
+
+            elif cancer_type == 'Breast':
+                st.markdown(f"""
+                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
+                                    <strong>Prediction:</strong> {label_1}<br>
+                                    <strong>Confidence:</strong> {prob_1}%<br><br>
+                                    <strong>Other Classes</strong>
+                                    <p>Confidence of {label_2}:  {prob_2}%<br>
+
+
+                                """, unsafe_allow_html=True)
+            elif cancer_type == 'Cervical':
+                st.markdown(f"""
+                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
+                                    <strong>Prediction:</strong> {label_1}<br>
+                                    <strong>Confidence:</strong> {prob_1}%<br><br>
+                                    <strong>Other Classes</strong>
+                                    <p>Confidence of {label_2}:  {prob_2}%<br>
+                                    <p>Confidence of {label_3}:  {prob_3}%<br>
+                                    <p>Confidence of {label_4}:  {prob_4}%<br>
+                                    <p>Confidence of {label_5}:  {prob_5}%<br>
+
+                                """, unsafe_allow_html=True)
+            elif cancer_type == 'Kidney':
+                st.markdown(f"""
+                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
+                                    <strong>Prediction:</strong> {label_1}<br>
+                                    <strong>Confidence:</strong> {prob_1}%<br><br>
+                                    <strong>Other Classes</strong>
+                                    <p>Confidence of {label_2}:  {prob_2}%<br>
+
+
+                                """, unsafe_allow_html=True)
+            elif cancer_type == 'Lung/Colon':
+                st.markdown(f"""
+                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
+                                    <strong>Prediction:</strong> {label_1}<br>
+                                    <strong>Confidence:</strong> {prob_1}%<br><br>
+                                    <strong>Other Classes</strong>
+                                    <p>Confidence of {label_2}:  {prob_2}%<br>
+                                    <p>Confidence of {label_3}:  {prob_3}%<br>
+                                    <p>Confidence of {label_4}:  {prob_4}%<br>
+                                    <p>Confidence of {label_5}:  {prob_5}%<br>
+
+
+                                """, unsafe_allow_html=True)
+            elif cancer_type == 'Lymphoma':
+                st.markdown(f"""
+                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
+                                    <strong>Prediction:</strong> {label_1}<br>
+                                    <strong>Confidence:</strong> {prob_1}%<br><br>
+                                    <strong>Other Classes</strong>
+                                    <p>Confidence of {label_2}:  {prob_2}%<br>
+                                    <p>Confidence of {label_3}:  {prob_3}%<br>
+
+
+
+                                """, unsafe_allow_html=True)
+            elif cancer_type == 'Oral':
+                st.markdown(f"""
+                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
+                                    <strong>Prediction:</strong> {label_1}<br>
+                                    <strong>Confidence:</strong> {prob_1}%<br><br>
+                                    <strong>Other Classes</strong>
+                                    <p>Confidence of {label_2}:  {prob_2}%<br>
+
+
+
+                                """, unsafe_allow_html=True)
+            
+            model = tf.keras.models.load_model(model_path)
+            image_array = tf.expand_dims(cv2.resize(cv2.imread(temp_file_path), (224, 224)), axis=0)
+            preds = model.predict(image_array)
+            
+            # For binary classification with single output, argmax is always 0
+            if preds.shape[1] == 1:
+                predicted_class = 0
+            else:
+                predicted_class = tf.argmax(preds[0])
+
+            generate_gradcam_heatmap(model = model, 
+                                     image = image_array, 
                                      class_index=predicted_class, 
                                      last_conv_layer_name="conv_1_bn")
             
@@ -496,7 +656,13 @@ def demo_page():
             model = tf.keras.models.load_model(model_path)
             image_array = tf.expand_dims(cv2.resize(cv2.imread(demo_images[selected_image_key]), (224, 224)), axis=0)
             preds = model.predict(image_array)
-            predicted_class = tf.argmax(preds[0])
+
+            # For binary classification with single output, argmax is always 0
+            if preds.shape[1] == 1:
+                predicted_class = 0
+            else:
+                predicted_class = tf.argmax(preds[0])
+                
             generate_gradcam_heatmap(model = model, 
                                      image = image_array, 
                                      class_index=predicted_class, 
