@@ -217,175 +217,206 @@ def predict(img, type):
     return label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5, model_path
 
 def welcome_page():
-    # ... (welcome page code remains the same) ...
     st.title("🩺 Welcome to the CNN Cancer Detection App 🔬")
     st.write("""
-    👋 Hello! This app uses a Convolutional Neural Network (CNN) to help detect cancer from medical images. 🖼️
+    👋 **Hello! Welcome to an advanced tool for cancer detection.**
+
+    This application leverages the power of Convolutional Neural Networks (CNNs) to analyze medical images and identify potential signs of various types of cancer. Our goal is to provide a user-friendly platform that can serve as an educational and preliminary screening tool.
     """)
-    st.write("""
-    Please use the sidebar on the left to navigate through the app. 🧭
-    """)
+    
+    st.info("Please use the sidebar on the left to navigate through the app's features. 🧭")
+
     st.write("---")
-    st.subheader("🚀 How to Use:")
+
+    st.subheader("🚀 How It Works")
     st.write("""
-    1. 📂 Navigate to the "Detection" page in the sidebar to upload an image and get a prediction. 📊
-    2. 📚 Explore the "Backend Information" section for details about the model and its implementation. 🧠
-    3. 🖼️ Try our image preview demo on the demo page!
+    The process is simple:
+    1.  **Navigate**: Use the sidebar to go to the **Detection** or **Demo** page.
+    2.  **Upload**: On the **Detection** page, upload a medical image you want to analyze.
+    3.  **Select**: Choose the corresponding cancer type from the dropdown menu.
+    4.  **Analyze**: Click "Run Detection" to let the CNN model process the image.
+    5.  **Review**: The app will display the prediction, confidence score, and a Grad-CAM heatmap showing which parts of the image the model focused on.
     """)
+
     st.write("---")
-    st.write("⚠️ This application is for informational purposes only and should not be used as a substitute for professional medical advice. 👩‍⚕️👨‍⚕️")
+
+    st.subheader("🌟 Key Features")
+    st.write("""
+    - **Multi-Cancer Detection**: Supports various cancer types including Brain, Breast, and more.
+    - **Instant Predictions**: Get results in seconds.
+    - **Visual Feedback**: Grad-CAM heatmaps provide insight into the model's decision-making process.
+    - **In-Depth Information**: Explore the "Backend Information" section to learn about the model architecture, training, and datasets.
+    """)
+
+    st.warning("⚠️ **Disclaimer**: This application is for informational and educational purposes only. It is not a substitute for professional medical advice, diagnosis, or treatment. Always consult with a qualified healthcare provider for any medical concerns. 👩‍⚕️👨‍⚕️")
 
 def detection_page():
-    # ... (detection page code remains the same) ...
     st.title("🔬 Cancer Detection 📊")
-    st.write("Upload an image for cancer detection. 🖼️")
+    st.write("**Upload an image and select a cancer type to get a prediction.**")
+    st.write("The model will analyze the image and provide a prediction along with a confidence score and a heatmap indicating the areas of interest.")
+
     uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+    temp_file_path = None
     if uploaded_file is not None:
+        # Display the uploaded image
+        st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
         # Create a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as temp_file:
-            # Write the uploaded file's content to the temporary file
             temp_file.write(uploaded_file.getvalue())
             temp_file_path = temp_file.name
 
-      
-
-
     cancer_type = st.selectbox("Select Cancer Area",
                                ["Brain", "Breast", "Cervical", "Kidney", "Lung/Colon", "Lymphoma", "Oral"])
-    if "selected_image_key" in st.session_state:
-        st.write(f"Currently Selected Image: {st.session_state.selected_image_key}")
-    st.write(f"Currently Selected Area: {cancer_type}")
-    if st.button("Run Detection"):
-        with st.spinner("Running Detection..."):  # Loading box
+    
+    st.write(f"**Selected Area:** {cancer_type}")
 
-            selected_image_path = temp_file_path
-            st.session_state.demo_image_selected = temp_file_path
+    if st.button("Run Detection"):
+        if temp_file_path is None:
+            st.error("Please upload an image first.")
+            return
+            
+        with st.spinner("🔍 Analyzing Image... Please wait."):
             label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5, model_path = predict(
-                img=selected_image_path, type=cancer_type)
+                img=temp_file_path, type=cancer_type)
 
-            if cancer_type == 'Brain':
-                st.markdown(f"""
-                    <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                        <strong>Prediction:</strong> {label_1}<br>
-                        <strong>Confidence:</strong> {prob_1}%<br><br>
-                        <strong>Other Classes</strong>
-                        <p>Confidence of {label_2}:  {prob_2}%<br>
-                        <p>Confidence of {label_3}:  {prob_3}%<br>
+            st.subheader("📈 Prediction Results")
+            
+            # Display main prediction
+            st.markdown(f"""
+            <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px; text-align: center;">
+                <h2>Prediction: <span style="color: #FF4B4B;">{label_1}</span></h2>
+                <h3>Confidence: <span style="color: #FF4B4B;">{prob_1}%</span></h3>
+            </div>
+            """, unsafe_allow_html=True)
 
-                    """, unsafe_allow_html=True)
+            # Display other class probabilities in an expander
+            with st.expander("View Other Class Probabilities"):
+                if cancer_type == 'Brain':
+                    st.write(f"Confidence of {label_2}: {prob_2}%")
+                    st.write(f"Confidence of {label_3}: {prob_3}%")
+                elif cancer_type == 'Breast' or cancer_type == 'Kidney' or cancer_type == 'Oral':
+                    st.write(f"Confidence of {label_2}: {prob_2}%")
+                elif cancer_type == 'Cervical' or cancer_type == 'Lung/Colon':
+                    st.write(f"Confidence of {label_2}: {prob_2}%")
+                    st.write(f"Confidence of {label_3}: {prob_3}%")
+                    st.write(f"Confidence of {label_4}: {prob_4}%")
+                    st.write(f"Confidence of {label_5}: {prob_5}%")
+                elif cancer_type == 'Lymphoma':
+                    st.write(f"Confidence of {label_2}: {prob_2}%")
+                    st.write(f"Confidence of {label_3}: {prob_3}%")
 
-            elif cancer_type == 'Breast':
-                st.markdown(f"""
-                                    <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                        <strong>Prediction:</strong> {label_1}<br>
-                                        <strong>Confidence:</strong> {prob_1}%<br><br>
-                                        <strong>Other Classes</strong>
-                                        <p>Confidence of {label_2}:  {prob_2}%<br>
-
-
-                                    """, unsafe_allow_html=True)
-            elif cancer_type == 'Cervical':
-                st.markdown(f"""
-                                    <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                        <strong>Prediction:</strong> {label_1}<br>
-                                        <strong>Confidence:</strong> {prob_1}%<br><br>
-                                        <strong>Other Classes</strong>
-                                        <p>Confidence of {label_2}:  {prob_2}%<br>
-                                        <p>Confidence of {label_3}:  {prob_3}%<br>
-                                        <p>Confidence of {label_4}:  {prob_4}%<br>
-                                        <p>Confidence of {label_5}:  {prob_5}%<br>
-
-                                    """, unsafe_allow_html=True)
-            elif cancer_type == 'Kidney':
-                st.markdown(f"""
-                                    <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                        <strong>Prediction:</strong> {label_1}<br>
-                                        <strong>Confidence:</strong> {prob_1}%<br><br>
-                                        <strong>Other Classes</strong>
-                                        <p>Confidence of {label_2}:  {prob_2}%<br>
-
-
-                                    """, unsafe_allow_html=True)
-            elif cancer_type == 'Lung/Colon':
-                st.markdown(f"""
-                                    <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                        <strong>Prediction:</strong> {label_1}<br>
-                                        <strong>Confidence:</strong> {prob_1}%<br><br>
-                                        <strong>Other Classes</strong>
-                                        <p>Confidence of {label_2}:  {prob_2}%<br>
-                                        <p>Confidence of {label_3}:  {prob_3}%<br>
-                                        <p>Confidence of {label_4}:  {prob_4}%<br>
-                                        <p>Confidence of {label_5}:  {prob_5}%<br>
-
-
-                                    """, unsafe_allow_html=True)
-            elif cancer_type == 'Lymphoma':
-                st.markdown(f"""
-                                    <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                        <strong>Prediction:</strong> {label_1}<br>
-                                        <strong>Confidence:</strong> {prob_1}%<br><br>
-                                        <strong>Other Classes</strong>
-                                        <p>Confidence of {label_2}:  {prob_2}%<br>
-                                        <p>Confidence of {label_3}:  {prob_3}%<br>
-
-
-
-                                    """, unsafe_allow_html=True)
-            elif cancer_type == 'Oral':
-                st.markdown(f"""
-                                    <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                        <strong>Prediction:</strong> {label_1}<br>
-                                        <strong>Confidence:</strong> {prob_1}%<br><br>
-                                        <strong>Other Classes</strong>
-                                        <p>Confidence of {label_2}:  {prob_2}%<br>
-
-
-
-                                    """, unsafe_allow_html=True)
-                
+            # --- Grad-CAM Generation ---
             model = tf.keras.models.load_model(model_path)
             image_array = tf.expand_dims(cv2.resize(cv2.imread(temp_file_path), (224, 224)), axis=0)
             preds = model.predict(image_array)
             
-            # For binary classification with single output, argmax is always 0
+            if isinstance(preds, list):
+                preds = preds[0]
+            
             if preds.shape[1] == 1:
                 predicted_class = 0
             else:
                 predicted_class = tf.argmax(preds[0])
 
-            # --- Grad-CAM Generation ---
             last_conv_layer_name = "conv_1_bn" 
             heatmap = generate_gradcam_heatmap(model, image_array, last_conv_layer_name, pred_index=predicted_class)
             
-            # Overlay heatmap on original image
             original_img = cv2.cvtColor(cv2.imread(temp_file_path), cv2.COLOR_BGR2RGB)
             superimposed_img = overlay_gradcam_on_image(original_img, heatmap)
 
-            # Display Grad-CAM
-            st.subheader("Grad-CAM Heatmap")
-            st.image(superimposed_img, caption="Model Activation Heatmap", use_container_width=True)
+            st.subheader("🔥 Grad-CAM Heatmap")
+            st.image(superimposed_img, caption="This heatmap shows the regions the model focused on for its prediction.", use_column_width=True)
 
+        # Clean up the temporary file
+        if temp_file_path:
+            os.remove(temp_file_path)
 
-def backend_info_page():
-    # ... (backend info page code remains the same) ...
-    st.title("🧠 Backend Information 📚")
-    st.write("Details about the CNN model and its implementation. ⚙️")
+def model_architecture_page():
+    st.title("🏗️ Model Architecture: MobileNetV3Large")
     st.write("""
-    Here you can find information about the model architecture, training process, and datasets used. 📝
+    The deep learning models used in this application are built upon the **MobileNetV3Large** architecture. This is a state-of-the-art, lightweight, and powerful convolutional neural network designed for high performance on mobile and embedded devices, making it perfect for efficient and fast predictions.
     """)
-    st.write("---")
-    st.subheader("🏗️ Model Architecture")
-    st.write("Details about the CNN layers and parameters. 🧱")
-    st.write("---")
-    st.subheader("🚂 Training Process")
-    st.write("Information about the training data, epochs, and optimization. 📈")
-    st.write("---")
-    st.subheader("💾 Datasets")
-    st.write("Details about the datasets used for training and testing. 📊")
+
+    st.subheader("Key Features of MobileNetV3")
+    st.write("""
+    - **Efficiency**: It uses a combination of depthwise separable convolutions and inverted residual blocks with linear bottlenecks to drastically reduce the number of parameters and computational cost compared to traditional CNNs.
+    - **Squeeze-and-Excitation Blocks**: It incorporates lightweight attention modules (Squeeze-and-Excitation) that allow the network to learn the importance of different channels in the feature maps, improving accuracy with minimal overhead.
+    - **h-swish Activation Function**: It utilizes a novel, computationally efficient approximation of the swish activation function, which provides better accuracy than standard ReLU.
+    - **Platform-Aware NAS**: The architecture was discovered through a combination of hardware-aware Network Architecture Search (NAS) and manual refinements, ensuring it is optimized for real-world performance.
+    """)
+    
+    st.info("For this project, the pre-trained MobileNetV3Large model was used as a base, and a custom classifier head was added and fine-tuned on our specific cancer datasets. This technique, known as **transfer learning**, allows us to leverage the powerful features learned by the model on a large dataset (ImageNet) and adapt them to our medical imaging task.")
+
+def training_process_page():
+    st.title("🚂 Training Process")
+    st.write("The models were trained using a systematic process to ensure robustness and high accuracy.")
+
+    st.subheader("1. Data Preprocessing and Augmentation")
+    st.write("""
+    - **Resizing**: All images were resized to a standard dimension of 224x224 pixels to match the input size of the MobileNetV3 architecture.
+    - **Normalization**: Pixel values were scaled to a range of [0, 1] to help stabilize the training process.
+    - **Data Augmentation**: To prevent overfitting and make the model more robust to variations in images, the training data was augmented with random transformations such as:
+        - Rotations
+        - Horizontal and vertical flips
+        - Zooming
+        - Brightness adjustments
+    """)
+
+    st.subheader("2. Transfer Learning")
+    st.write("""
+    - The **MobileNetV3Large** model, pre-trained on the ImageNet dataset, was used as the base.
+    - The original classification layer of the model was removed.
+    - A new classifier head was added on top, consisting of a Global Average Pooling layer followed by Dense (fully connected) layers and a final output layer with a Softmax (for multi-class) or Sigmoid (for binary) activation function.
+    """)
+
+    st.subheader("3. Fine-Tuning")
+    st.write("""
+    - **Optimizer**: The models were trained using the **Adamax** optimizer, which is a variant of Adam that is well-suited for models with sparse parameter updates.
+    - **Loss Function**: **Categorical Cross-Entropy** was used for multi-class classification tasks, and **Binary Cross-Entropy** for binary tasks.
+    - **Epochs**: The models were trained for a set number of epochs, with early stopping implemented to prevent overfitting. The training would halt if the validation loss did not improve for a certain number of consecutive epochs.
+    - **Batch Size**: A suitable batch size was chosen to balance training speed and memory usage.
+    """)
+
+def datasets_page():
+    st.title("💾 Datasets")
+    st.write("The models were trained on a comprehensive collection of medical images for various cancer types.")
+    st.write("The primary dataset used is the **Multi-Cancer Image Dataset**, which is a large-scale, curated collection of images for different cancer classifications.")
+    
+    st.info("You can find the dataset on Kaggle: [Multi-Cancer Image Dataset](https://www.kaggle.com/datasets/obulisainaren/multi-cancer)")
+
+    st.subheader("Dataset Details")
+    st.write("""
+    This dataset contains thousands of images categorized into the following cancer types, which correspond to the models in this app:
+    - **Brain Cancer**: Images classified into Glioma, Meningioma, and Pituitary tumors.
+    - **Breast Cancer**: Histopathological images classified as Benign or Malignant.
+    - **Cervical Cancer**: Images of different cell types.
+    - **Kidney Cancer**: CT scan images showing Normal kidney tissue and Tumors.
+    - **Lung and Colon Cancer**: Histopathological images for Colon Adenocarcinoma, Benign Colon tissue, Lung Adenocarcinoma, Benign Lung tissue, and Lung Squamous Cell Carcinoma.
+    - **Lymphoma**: Images of different lymphoma subtypes.
+    - **Oral Cancer**: Images of Normal tissue and Oral Squamous Cell Carcinoma.
+    """)
+
+def results_page():
+    st.title("📊 Model Performance & Results")
+    st.write("The performance of the trained models was evaluated using several standard classification metrics to ensure their reliability and accuracy.")
+
+    st.subheader("Evaluation Metrics")
+    st.write("""
+    - **Accuracy**: The proportion of correct predictions out of the total number of predictions. It's a good general measure of performance.
+    - **Precision**: Measures the accuracy of positive predictions. It answers the question: "Of all the predictions that were 'cancer', how many were actually correct?"
+    - **Recall (Sensitivity)**: Measures the model's ability to find all the actual positive samples. It answers: "Of all the actual cancer cases, how many did the model correctly identify?"
+    - **F1-Score**: The harmonic mean of Precision and Recall, providing a single score that balances both concerns.
+    - **Confusion Matrix**: A table that visualizes the performance of the model, showing the counts of true positive, true negative, false positive, and false negative predictions.
+    """)
+
+    st.subheader("Overall Performance")
+    st.write("The models achieved high accuracy across all cancer types, demonstrating their effectiveness in distinguishing between different classes. Fine-tuning the MobileNetV3Large architecture proved to be a successful strategy, leading to robust models that can generalize well to new, unseen images.")
+    st.info("For detailed, per-class metrics and confusion matrices, please refer to the original model training notebooks.")
 
 def demo_page():
-    st.title("📋 Demo 🖼️")
-    st.write("Click on an image preview, then press 'Run Detection'.")
+    st.title("🖼️ Demo")
+    st.write("**Try out the model with our pre-selected demo images.**")
+    st.write("Click on an image preview, select the corresponding cancer type, and then press 'Run Detection' to see the model in action.")
 
     demo_images = {
         "Brain Glioma": "images/brain_glioma_0038.jpg",
@@ -398,294 +429,98 @@ def demo_page():
     selected_image_key = st.session_state.get("selected_image_key", list(demo_images.keys())[0])
 
     cols = st.columns(len(demo_images))
-    image_keys = list(demo_images.keys())
-
     for i, (key, path) in enumerate(demo_images.items()):
         with cols[i]:
             try:
                 img = Image.open(path)
-                img.thumbnail((100, 100))
-                st.image(img, caption=key, use_container_width=False, output_format="PNG")
+                # Add a border if the image is selected
+                border_style = "border: 3px solid #FF4B4B;" if selected_image_key == key else ""
+                st.image(img, caption=key, use_column_width=True)
                 if st.button("Select", key=f"btn_{key}"):
-                    selected_image_key = key
-                    st.session_state.selected_image_key = selected_image_key
+                    st.session_state.selected_image_key = key
+                    st.rerun() # Rerun to update the selection visually
             except FileNotFoundError:
                 st.error(f"Image not found: {path}.")
-    cancer_type = st.selectbox("Select Cancer Area", ["Brain", "Breast", "Cervical", "Kidney", "Lung/Colon", "Lymphoma", "Oral"])
-    if "selected_image_key" in st.session_state:
-        st.write(f"Currently Selected Image: {st.session_state.selected_image_key}")
-    st.write(f"Currently Selected Area: {cancer_type}")
-    if st.button("Run Detection"):
-        with st.spinner("Running Detection..."): #Loading box
 
+    st.write("---")
+    st.write(f"**Selected Image:** {st.session_state.get('selected_image_key', 'None')}")
+    
+    # Automatically select the cancer type based on the image key
+    selected_key = st.session_state.get('selected_image_key', '')
+    if 'Brain' in selected_key:
+        cancer_type_index = 0
+    elif 'Breast' in selected_key:
+        cancer_type_index = 1
+    else:
+        cancer_type_index = 0 # Default
+
+    cancer_type = st.selectbox("Select Cancer Area", 
+                               ["Brain", "Breast", "Cervical", "Kidney", "Lung/Colon", "Lymphoma", "Oral"],
+                               index=cancer_type_index)
+    
+    st.write(f"**Selected Area:** {cancer_type}")
+
+    if st.button("Run Detection", key="demo_run"):
+        with st.spinner("🔍 Analyzing Image... Please wait."):
             selected_image_path = demo_images[selected_image_key]
-            st.session_state.demo_image_selected = selected_image_path
-            label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5, model_path = predict(img=demo_images[selected_image_key],  type=cancer_type)
-
-            if cancer_type == 'Brain':
-                st.markdown(f"""
-                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                    <strong>Prediction:</strong> {label_1}<br>
-                    <strong>Confidence:</strong> {prob_1}%<br><br>
-                    <strong>Other Classes</strong>
-                    <p>Confidence of {label_2}:  {prob_2}%<br>
-                    <p>Confidence of {label_3}:  {prob_3}%<br>
-                    
-                """, unsafe_allow_html=True)
-
-            elif cancer_type == 'Breast':
-                st.markdown(f"""
-                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                    <strong>Prediction:</strong> {label_1}<br>
-                                    <strong>Confidence:</strong> {prob_1}%<br><br>
-                                    <strong>Other Classes</strong>
-                                    <p>Confidence of {label_2}:  {prob_2}%<br>
-
-
-                                """, unsafe_allow_html=True)
-            elif cancer_type == 'Cervical':
-                st.markdown(f"""
-                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                    <strong>Prediction:</strong> {label_1}<br>
-                                    <strong>Confidence:</strong> {prob_1}%<br><br>
-                                    <strong>Other Classes</strong>
-                                    <p>Confidence of {label_2}:  {prob_2}%<br>
-                                    <p>Confidence of {label_3}:  {prob_3}%<br>
-                                    <p>Confidence of {label_4}:  {prob_4}%<br>
-                                    <p>Confidence of {label_5}:  {prob_5}%<br>
-
-                                """, unsafe_allow_html=True)
-            elif cancer_type == 'Kidney':
-                st.markdown(f"""
-                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                    <strong>Prediction:</strong> {label_1}<br>
-                                    <strong>Confidence:</strong> {prob_1}%<br><br>
-                                    <strong>Other Classes</strong>
-                                    <p>Confidence of {label_2}:  {prob_2}%<br>
-
-
-                                """, unsafe_allow_html=True)
-            elif cancer_type == 'Lung/Colon':
-                st.markdown(f"""
-                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                    <strong>Prediction:</strong> {label_1}<br>
-                                    <strong>Confidence:</strong> {prob_1}%<br><br>
-                                    <strong>Other Classes</strong>
-                                    <p>Confidence of {label_2}:  {prob_2}%<br>
-                                    <p>Confidence of {label_3}:  {prob_3}%<br>
-                                    <p>Confidence of {label_4}:  {prob_4}%<br>
-                                    <p>Confidence of {label_5}:  {prob_5}%<br>
-
-
-                                """, unsafe_allow_html=True)
-            elif cancer_type == 'Lymphoma':
-                st.markdown(f"""
-                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                    <strong>Prediction:</strong> {label_1}<br>
-                                    <strong>Confidence:</strong> {prob_1}%<br><br>
-                                    <strong>Other Classes</strong>
-                                    <p>Confidence of {label_2}:  {prob_2}%<br>
-                                    <p>Confidence of {label_3}:  {prob_3}%<br>
-
-
-
-                                """, unsafe_allow_html=True)
-            elif cancer_type == 'Oral':
-                st.markdown(f"""
-                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                    <strong>Prediction:</strong> {label_1}<br>
-                                    <strong>Confidence:</strong> {prob_1}%<br><br>
-                                    <strong>Other Classes</strong>
-                                    <p>Confidence of {label_2}:  {prob_2}%<br>
-
-
-
-                                """, unsafe_allow_html=True)
             
-            model = tf.keras.models.load_model(model_path)
-            image_array = tf.expand_dims(cv2.resize(cv2.imread(temp_file_path), (224, 224)), axis=0)
-            preds = model.predict(image_array)
-            
-            # For binary classification with single output, argmax is always 0
-            if preds.shape[1] == 1:
-                predicted_class = 0
-            else:
-                predicted_class = tf.argmax(preds[0])
+            label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5, model_path = predict(img=selected_image_path,  type=cancer_type)
+
+            st.subheader("📈 Prediction Results")
+            st.markdown(f"""
+            <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px; text-align: center;">
+                <h2>Prediction: <span style="color: #FF4B4B;">{label_1}</span></h2>
+                <h3>Confidence: <span style="color: #FF4B4B;">{prob_1}%</span></h3>
+            </div>
+            """, unsafe_allow_html=True)
 
             # --- Grad-CAM Generation ---
-            last_conv_layer_name = "conv_1_bn" 
-            heatmap = generate_gradcam_heatmap(model, image_array, last_conv_layer_name, pred_index=predicted_class)
-            
-            # Overlay heatmap on original image
-            original_img = cv2.cvtColor(cv2.imread(temp_file_path), cv2.COLOR_BGR2RGB)
-            superimposed_img = overlay_gradcam_on_image(original_img, heatmap)
-
-            # Display Grad-CAM
-            st.subheader("Grad-CAM Heatmap")
-            st.image(superimposed_img, caption="Model Activation Heatmap", use_container_width=True)
-
-
-def demo_page():
-    st.title("📋 Demo 🖼️")
-    st.write("Click on an image preview, then press 'Run Detection'.")
-
-    demo_images = {
-        "Brain Glioma": "images/brain_glioma_0038.jpg",
-        "Brain Menin": "images/brain_menin_0039.jpg",
-        "Brain Tumor": "images/brain_tumor_0021.jpg",
-        "Breast Benign": "images/breast_benign_0003.jpg",
-        "Breast Malignant": "images/breast_malignant_0002.jpg",
-    }
-
-    selected_image_key = st.session_state.get("selected_image_key", list(demo_images.keys())[0])
-
-    cols = st.columns(len(demo_images))
-    image_keys = list(demo_images.keys())
-
-    for i, (key, path) in enumerate(demo_images.items()):
-        with cols[i]:
-            try:
-                img = Image.open(path)
-                img.thumbnail((100, 100))
-                st.image(img, caption=key, use_container_width=False, output_format="PNG")
-                if st.button("Select", key=f"btn_{key}"):
-                    selected_image_key = key
-                    st.session_state.selected_image_key = selected_image_key
-            except FileNotFoundError:
-                st.error(f"Image not found: {path}.")
-    cancer_type = st.selectbox("Select Cancer Area", ["Brain", "Breast", "Cervical", "Kidney", "Lung/Colon", "Lymphoma", "Oral"])
-    if "selected_image_key" in st.session_state:
-        st.write(f"Currently Selected Image: {st.session_state.selected_image_key}")
-    st.write(f"Currently Selected Area: {cancer_type}")
-    if st.button("Run Detection"):
-        with st.spinner("Running Detection..."): #Loading box
-
-            selected_image_path = demo_images[selected_image_key]
-            st.session_state.demo_image_selected = selected_image_path
-            label_1, prob_1, label_2, prob_2, label_3, prob_3, label_4, prob_4, label_5, prob_5, model_path = predict(img=demo_images[selected_image_key],  type=cancer_type)
-
-            if cancer_type == 'Brain':
-                st.markdown(f"""
-                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                    <strong>Prediction:</strong> {label_1}<br>
-                    <strong>Confidence:</strong> {prob_1}%<br><br>
-                    <strong>Other Classes</strong>
-                    <p>Confidence of {label_2}:  {prob_2}%<br>
-                    <p>Confidence of {label_3}:  {prob_3}%<br>
-                    
-                """, unsafe_allow_html=True)
-
-            elif cancer_type == 'Breast':
-                st.markdown(f"""
-                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                    <strong>Prediction:</strong> {label_1}<br>
-                                    <strong>Confidence:</strong> {prob_1}%<br><br>
-                                    <strong>Other Classes</strong>
-                                    <p>Confidence of {label_2}:  {prob_2}%<br>
-
-
-                                """, unsafe_allow_html=True)
-            elif cancer_type == 'Cervical':
-                st.markdown(f"""
-                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                    <strong>Prediction:</strong> {label_1}<br>
-                                    <strong>Confidence:</strong> {prob_1}%<br><br>
-                                    <strong>Other Classes</strong>
-                                    <p>Confidence of {label_2}:  {prob_2}%<br>
-                                    <p>Confidence of {label_3}:  {prob_3}%<br>
-                                    <p>Confidence of {label_4}:  {prob_4}%<br>
-                                    <p>Confidence of {label_5}:  {prob_5}%<br>
-
-                                """, unsafe_allow_html=True)
-            elif cancer_type == 'Kidney':
-                st.markdown(f"""
-                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                    <strong>Prediction:</strong> {label_1}<br>
-                                    <strong>Confidence:</strong> {prob_1}%<br><br>
-                                    <strong>Other Classes</strong>
-                                    <p>Confidence of {label_2}:  {prob_2}%<br>
-
-
-                                """, unsafe_allow_html=True)
-            elif cancer_type == 'Lung/Colon':
-                st.markdown(f"""
-                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                    <strong>Prediction:</strong> {label_1}<br>
-                                    <strong>Confidence:</strong> {prob_1}%<br><br>
-                                    <strong>Other Classes</strong>
-                                    <p>Confidence of {label_2}:  {prob_2}%<br>
-                                    <p>Confidence of {label_3}:  {prob_3}%<br>
-                                    <p>Confidence of {label_4}:  {prob_4}%<br>
-                                    <p>Confidence of {label_5}:  {prob_5}%<br>
-
-
-                                """, unsafe_allow_html=True)
-            elif cancer_type == 'Lymphoma':
-                st.markdown(f"""
-                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                    <strong>Prediction:</strong> {label_1}<br>
-                                    <strong>Confidence:</strong> {prob_1}%<br><br>
-                                    <strong>Other Classes</strong>
-                                    <p>Confidence of {label_2}:  {prob_2}%<br>
-                                    <p>Confidence of {label_3}:  {prob_3}%<br>
-
-
-
-                                """, unsafe_allow_html=True)
-            elif cancer_type == 'Oral':
-                st.markdown(f"""
-                                <div style="border: 2px solid #4CAF50; padding: 10px; border-radius: 5px;">
-                                    <strong>Prediction:</strong> {label_1}<br>
-                                    <strong>Confidence:</strong> {prob_1}%<br><br>
-                                    <strong>Other Classes</strong>
-                                    <p>Confidence of {label_2}:  {prob_2}%<br>
-
-
-
-                                """, unsafe_allow_html=True)
-            
             model = tf.keras.models.load_model(model_path)
-            image_array = tf.expand_dims(cv2.resize(cv2.imread(demo_images[selected_image_key]), (224, 224)), axis=0)
+            image_array = tf.expand_dims(cv2.resize(cv2.imread(selected_image_path), (224, 224)), axis=0)
             preds = model.predict(image_array)
+            
+            if isinstance(preds, list):
+                preds = preds[0]
 
-            # For binary classification with single output, argmax is always 0
             if preds.shape[1] == 1:
                 predicted_class = 0
             else:
                 predicted_class = tf.argmax(preds[0])
                 
-            # --- Grad-CAM Generation ---
             last_conv_layer_name = "conv_1_bn"
             heatmap = generate_gradcam_heatmap(model, image_array, last_conv_layer_name, pred_index=predicted_class)
 
-            # Overlay heatmap on original image
-            original_img = cv2.cvtColor(cv2.imread(demo_images[selected_image_key]), cv2.COLOR_BGR2RGB)
+            original_img = cv2.cvtColor(cv2.imread(selected_image_path), cv2.COLOR_BGR2RGB)
             superimposed_img = overlay_gradcam_on_image(original_img, heatmap)
 
-            # Display Grad-CAM
-            st.subheader("Grad-CAM Heatmap")
-            st.image(superimposed_img, caption="Model Activation Heatmap", use_column_width=True)
-                
-            
+            st.subheader("🔥 Grad-CAM Heatmap")
+            st.image(superimposed_img, caption="This heatmap shows the regions the model focused on for its prediction.", use_column_width=True)
 
 def main():
     st.sidebar.title("🧭 Navigation")
+    
+    # Main pages
     pages = {
         "🩺 Welcome": welcome_page,
         "🔬 Detection": detection_page,
-        "🧠 Backend Information": {
-            "📚 Model Details": backend_info_page,
-        },
-        "🖼️ Demo": demo_page
+        "🖼️ Demo": demo_page,
+        "🧠 Backend Information": None, # Placeholder
     }
-
+    
     selected_page = st.sidebar.radio("Go to", list(pages.keys()))
 
-    if selected_page == "🧠 Backend Information":
-        backend_pages = pages["🧠 Backend Information"]
-        backend_selected_page = st.sidebar.radio("Backend", list(backend_pages.keys()))
-        backend_pages[backend_selected_page]()
+    # Backend Information sub-pages
+    backend_pages = {
+        "Model Architecture": model_architecture_page,
+        "Training Process": training_process_page,
+        "Datasets": datasets_page,
+        "Results": results_page,
+    }
 
+    if selected_page == "🧠 Backend Information":
+        st.sidebar.markdown("---")
+        backend_selected_page = st.sidebar.radio("Backend Details", list(backend_pages.keys()))
+        backend_pages[backend_selected_page]()
     else:
         pages[selected_page]()
 
