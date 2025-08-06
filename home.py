@@ -259,7 +259,7 @@ def detection_page():
     temp_file_path = None
     if uploaded_file is not None:
         # Display the uploaded image
-        st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+        st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
         # Create a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as temp_file:
             temp_file.write(uploaded_file.getvalue())
@@ -325,7 +325,7 @@ def detection_page():
             superimposed_img = overlay_gradcam_on_image(original_img, heatmap)
 
             st.subheader("🔥 Grad-CAM Heatmap")
-            st.image(superimposed_img, caption="This heatmap shows the regions the model focused on for its prediction.", use_column_width=True)
+            st.image(superimposed_img, caption="This heatmap shows the regions the model focused on for its prediction.", use_container_width=True)
 
         # Clean up the temporary file
         if temp_file_path:
@@ -435,7 +435,7 @@ def demo_page():
                 img = Image.open(path)
                 # Add a border if the image is selected
                 border_style = "border: 3px solid #FF4B4B;" if selected_image_key == key else ""
-                st.image(img, caption=key, use_column_width=True)
+                st.image(img, caption=key, use_container_width=True)
                 if st.button("Select", key=f"btn_{key}"):
                     st.session_state.selected_image_key = key
                     st.rerun() # Rerun to update the selection visually
@@ -494,7 +494,7 @@ def demo_page():
             superimposed_img = overlay_gradcam_on_image(original_img, heatmap)
 
             st.subheader("🔥 Grad-CAM Heatmap")
-            st.image(superimposed_img, caption="This heatmap shows the regions the model focused on for its prediction.", use_column_width=True)
+            st.image(superimposed_img, caption="This heatmap shows the regions the model focused on for its prediction.", use_container_width=True)
 
 def main():
     st.sidebar.title("🧭 Navigation")
