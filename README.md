@@ -1,112 +1,67 @@
-# 🧬 Cancer Detection
+# Cancer detection
 
-A deep learning application for detecting cancer from medical images using **TensorFlow**. The project provides an easy-to-use web interface powered by **Streamlit**, allowing users to upload images and receive AI-driven diagnostic insights.  
+A Streamlit web app that classifies medical images from seven cancer areas (brain, breast, cervical, kidney, lung/colon, lymphoma and oral) and shows a Grad-CAM heatmap of the regions the model used. Each area has its own Keras model, built by transfer learning on MobileNetV3Large and trained on the Kaggle Multi-Cancer dataset. It is a personal project.
 
-🔗 **Live Demo:** [Cancer Detection App](https://cancerdetection-lewis.streamlit.app/)  
-📊 **Dataset:** [Multi-Cancer Image Dataset (Kaggle)](https://www.kaggle.com/datasets/obulisainaren/multi-cancer)  
+Live demo: [cancerdetection-lewis.streamlit.app](https://cancerdetection-lewis.streamlit.app/)
 
----
+![Grad-CAM heatmaps over brain MRI scans](Grad%20Cam%20Brain%20Scan%20Fig%2012.png)
 
-## 📑 Table of Contents
-- [Introduction](#-introduction)  
-- [Features](#-features)  
-- [Tech Stack](#-tech-stack)  
-- [Dataset](#-dataset)  
-- [Installation](#-installation)  
-- [Usage](#-usage)  
-- [Project Structure](#-project-structure)  
-- [Examples](#-examples)  
-- [Troubleshooting](#-troubleshooting)  
-- [Contributors](#-contributors)  
-- [License](#-license)  
+## How it works
 
----
+1. Training (`model_creation/model_creation.ipynb`) loads each cancer area from the [Multi-Cancer dataset](https://www.kaggle.com/datasets/obulisainaren/multi-cancer) with `kagglehub`, resizes images to 224x224 and splits them 80/20 into training and validation sets with a fixed seed.
+2. Each model is MobileNetV3Large with ImageNet weights and a frozen base, followed by global average pooling, dense layers of 1024, 512 and 128 units (ReLU) and a softmax output. It is trained with Adam (learning rate 0.0001) and categorical cross-entropy for 10 epochs (15 for oral).
+3. In the app (`home.py`) the user uploads an image and picks the cancer area. The matching model returns a probability for every class in that area.
+4. Grad-CAM takes gradients of the predicted class with respect to the `conv_1_bn` layer, averages them per channel, weights the feature maps and overlays the result on the image with a jet colour map.
 
-## 🌟 Introduction
-This project leverages **Convolutional Neural Networks (CNNs)** to classify medical images for cancer detection. It is designed to:  
-- Provide a quick and accessible way to test cancer detection models.  
-- Showcase model explainability with **Grad-CAM visualizations**.  
-- Serve as a proof-of-concept for applying AI to real-world healthcare challenges.  
+The classes per area are: brain (glioma, meningioma, tumour), breast (benign, malignant), cervical (five cell types), kidney (normal, tumour), lung/colon (colon adenocarcinoma, colon benign, lung adenocarcinoma, lung benign, lung squamous cell carcinoma), lymphoma (CLL, follicular, mantle cell) and oral (normal, squamous cell carcinoma).
 
----
+## Results
 
-## ✨ Features
-- Upload medical images directly via the web interface.  
-- Get real-time cancer predictions with confidence scores.  
-- Visualize which image regions influenced the model’s decision using Grad-CAM.  
-- Simple deployment via **Streamlit Cloud**.  
+Accuracy on the 20% validation split, from `model.evaluate` in the training notebook:
 
----
+| Cancer area | Validation images | Accuracy |
+|---|---|---|
+| Brain | 3,000 | 99.47% |
+| Breast | 2,000 | 99.70% |
+| Cervical | 5,000 | 99.96% |
+| Kidney | 2,000 | 100.00% |
+| Lung/colon | 5,000 | 99.70% |
+| Lymphoma | 3,000 | 98.10% |
+| Oral | 2,000 | 93.85% |
 
-## 🛠 Tech Stack
-- **Python 3.9+**  
-- **TensorFlow / Keras** (model creation & training)  
-- **NumPy, Pandas, Matplotlib** (data processing & visualization)  
-- **Grad-CAM** (explainability)  
-- **Streamlit** (interactive UI)  
+There is no separate test set, so these figures are likely to be optimistic.
 
----
+## Repository layout
 
-## 📊 Dataset
-The model is trained using the [**Multi-Cancer Image Dataset**](https://www.kaggle.com/datasets/obulisainaren/multi-cancer), which contains medical images across multiple cancer types.  
+| Path | What it is |
+|---|---|
+| `home.py` | Streamlit app: detection page, demo page with sample images, and background pages on the model and dataset |
+| `models/` | The seven trained `.keras` models (about 31 MB each) loaded by the app |
+| `model_creation/model_creation.ipynb` | Data loading, training, evaluation, confusion matrix and sample predictions |
+| `grad_cam.py` | Batch script that writes Grad-CAM overlays for every image in `images/` to `grad_cam_outputs/` |
+| `images/`, `grad_cam_outputs/` | Brain and breast sample images used by the demo page, and their Grad-CAM overlays |
+| `mammography_vs_nhs.ipynb` | Follow-up experiment: a breast cancer model on RSNA screening mammograms with a patient-level split, compared with NHS first-reader sensitivity at matched specificity |
+| `pdf.py` | Prototype ReportLab script that lays out a PDF analysis report |
+| `preprocess.py` | Earlier standalone version of the prediction function |
+| `MobileNetV3 Architecture.png` | Diagram of the MobileNetV3 backbone |
+| `requirements.txt`, `packages.txt`, `.devcontainer/` | Python packages, system packages for Streamlit Cloud, and a Codespaces config (Python 3.11) |
 
-⚠️ **Note:** The dataset is used strictly for research and educational purposes. This application is **not a medical diagnostic tool** and should not be relied upon for clinical decisions.  
-
----
-
-## ⚙️ Installation
-Clone the repository and install dependencies:  
+## Running it
 
 ```bash
 git clone https://github.com/lewis-shearer/Cancer_Detection.git
 cd Cancer_Detection
 pip install -r requirements.txt
- ```
+streamlit run home.py
+```
 
-## 🚀 Usage
-Run the app locally:  
+To regenerate the Grad-CAM samples, run `python grad_cam.py`. Retraining needs the Multi-Cancer dataset, which the notebook downloads with `kagglehub`; the dataset path in the notebook is hard-coded to the Codespaces cache directory. The mammography notebook needs the RSNA Screening Mammography competition rules accepted on Kaggle and a GPU.
 
-```bash
-streamlit run app.py
- ```
-Then open http://localhost:8501 in your browser.
+## Limitations
 
-For deployment, push your repo to Streamlit Cloud or another hosting service.
-
-## 📂 Project Structure
-
-```bash
-Cancer_Detection/
-│
-├── app.py                 # Streamlit app entry point
-├── requirements.txt       # Dependencies
-├── model_creation/        # Scripts for training models
-├── grad_cam/              # Explainability visualizations
-├── .devcontainer/         # Dev environment setup
-└── README.md              # Project documentation
- ```
-
-## 🖼 Examples
-- Upload an X-ray or histopathology image.  
-- The model outputs **Cancer Detected** or **No Cancer** with a probability score.  
-- Grad-CAM heatmaps highlight critical regions of the image.  
-
----
-
-## 🛠 Troubleshooting
-- **Module not found errors** → Run `pip install -r requirements.txt` again.  
-- **Streamlit app won’t launch** → Ensure you’re in the correct project directory.  
-- **TensorFlow issues on M1 Macs** → Install `tensorflow-macos` and `tensorflow-metal`.  
-
----
-
-## 👥 Contributors
-- [Lewis Shearer](https://github.com/lewis-shearer)  
-
-Contributions are welcome! Feel free to fork, submit issues, or open pull requests.  
-
----
-
-## 📜 License
-This project is licensed under the **MIT License**.  
-
+- This is not a medical tool and should not be used for diagnosis.
+- The train/validation split is random per image, and the validation set was the only held-out data.
+- Each model always answers with one of its own classes, so the result is meaningless if the wrong cancer area is chosen or the image is not from that dataset.
+- `mammography_vs_nhs.ipynb` has not been run yet and has no results.
+- `pdf.py` uses hard-coded placeholder data, is not connected to the app and needs Arial TTF files on the system.
+- The demo page only has brain and breast sample images.
