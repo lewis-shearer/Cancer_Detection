@@ -85,7 +85,6 @@ def predict(img, type):
     import cv2
     import random
     import tensorflow as tf
-    from tensorflow.keras.optimizers import Adamax  # Import Adamax
 
     # Set a seed for reproducibility
     random.seed(42)
@@ -345,37 +344,36 @@ def model_architecture_page():
     - **Platform-Aware NAS**: The architecture was discovered through a combination of hardware-aware Network Architecture Search (NAS) and manual refinements, ensuring it is optimized for real-world performance.
     """)
     
-    st.info("For this project, the pre-trained MobileNetV3Large model was used as a base, and a custom classifier head was added and fine-tuned on our specific cancer datasets. This technique, known as **transfer learning**, allows us to leverage the powerful features learned by the model on a large dataset (ImageNet) and adapt them to our medical imaging task.")
+    st.info("For this project, the pre-trained MobileNetV3Large model was used as a base, and the base was frozen and a custom classifier head was trained on top of it for each cancer dataset. This technique, known as **transfer learning**, allows us to leverage the powerful features learned by the model on a large dataset (ImageNet) and adapt them to our medical imaging task.")
 
 def training_process_page():
     st.title("🚂 Training Process")
-    st.write("The models were trained using a systematic process to ensure robustness and high accuracy.")
+    st.write("Each cancer type has its own model, trained separately with the same process in `model_creation/model_creation.ipynb`.")
 
-    st.subheader("1. Data Preprocessing and Augmentation")
+    st.subheader("1. Data Preparation")
     st.write("""
-    - **Resizing**: All images were resized to a standard dimension of 224x224 pixels to match the input size of the MobileNetV3 architecture.
-    - **Normalization**: Pixel values were scaled to a range of [0, 1] to help stabilize the training process.
-    - **Data Augmentation**: To prevent overfitting and make the model more robust to variations in images, the training data was augmented with random transformations such as:
-        - Rotations
-        - Horizontal and vertical flips
-        - Zooming
-        - Brightness adjustments
+    - **Loading**: Images were loaded with `image_dataset_from_directory` and split 80/20 into training and validation sets with a fixed seed.
+    - **Resizing**: All images were resized to 224x224 pixels to match the input size of MobileNetV3.
+    - **Scaling**: Pixel scaling is handled by the preprocessing layer built into Keras's MobileNetV3Large, so no separate normalisation step was used.
+    - **No augmentation**: The training images were used as they are, without random transformations.
     """)
 
     st.subheader("2. Transfer Learning")
     st.write("""
-    - The **MobileNetV3Large** model, pre-trained on the ImageNet dataset, was used as the base.
-    - The original classification layer of the model was removed.
-    - A new classifier head was added on top, consisting of a Global Average Pooling layer followed by Dense (fully connected) layers and a final output layer with a Softmax (for multi-class) or Sigmoid (for binary) activation function.
+    - The **MobileNetV3Large** model, pre-trained on ImageNet, was used as the base with its original classification layer removed.
+    - The base was frozen, so only the new classifier head was trained.
+    - The head is a Global Average Pooling layer, Dense layers of 1024, 512 and 128 units with ReLU, and a Softmax output with one unit per class.
     """)
 
-    st.subheader("3. Fine-Tuning")
+    st.subheader("3. Training Settings")
     st.write("""
-    - **Optimizer**: The models were trained using the **Adamax** optimizer, which is a variant of Adam that is well-suited for models with sparse parameter updates.
-    - **Loss Function**: **Categorical Cross-Entropy** was used for multi-class classification tasks, and **Binary Cross-Entropy** for binary tasks.
-    - **Epochs**: The models were trained for a set number of epochs, with early stopping implemented to prevent overfitting. The training would halt if the validation loss did not improve for a certain number of consecutive epochs.
-    - **Batch Size**: A suitable batch size was chosen to balance training speed and memory usage.
+    - **Optimizer**: Adam with a learning rate of 0.0001.
+    - **Loss Function**: Categorical cross-entropy.
+    - **Epochs**: A fixed 10 epochs (15 for the oral cancer model), without early stopping.
+    - **Batch Size**: 16.
     """)
+
+    st.warning("There was no separate test set. The reported accuracies come from the 20% validation split, which was split per image, so they are likely to be optimistic.")
 
 def datasets_page():
     st.title("💾 Datasets")
@@ -387,7 +385,7 @@ def datasets_page():
     st.subheader("Dataset Details")
     st.write("""
     This dataset contains thousands of images categorized into the following cancer types, which correspond to the models in this app:
-    - **Brain Cancer**: Images classified into Glioma, Meningioma, and Pituitary tumors.
+    - **Brain Cancer**: Images classified into Glioma, Meningioma, and a general Tumour class.
     - **Breast Cancer**: Histopathological images classified as Benign or Malignant.
     - **Cervical Cancer**: Images of different cell types.
     - **Kidney Cancer**: CT scan images showing Normal kidney tissue and Tumors.
@@ -410,8 +408,13 @@ def results_page():
     """)
 
     st.subheader("Overall Performance")
-    st.write("The models achieved high accuracy across all cancer types, demonstrating their effectiveness in distinguishing between different classes. Fine-tuning the MobileNetV3Large architecture proved to be a successful strategy, leading to robust models that can generalize well to new, unseen images.")
-    st.info("For detailed, per-class metrics and confusion matrices, please refer to the original model training notebooks.")
+    st.write("Accuracy on the 20% validation split, from `model.evaluate` in the training notebook:")
+    st.table({
+        "Cancer type": ["Brain", "Breast", "Cervical", "Kidney", "Lung/colon", "Lymphoma", "Oral"],
+        "Validation accuracy": ["99.47%", "99.70%", "99.96%", "100.00%", "99.70%", "98.10%", "93.85%"],
+    })
+    st.write("These are validation scores, not results on an independent test set. Images from outside the Kaggle dataset, such as real clinical scans, may give much worse results.")
+    st.info("For confusion matrices and sample predictions, see `model_creation/model_creation.ipynb`.")
 
 def demo_page():
     st.title("🖼️ Demo")
